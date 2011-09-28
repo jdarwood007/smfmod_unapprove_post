@@ -1,0 +1,158 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+
+	<id>SleePy:post_unapproval</id>
+
+	<version>1.1.4</version>
+
+	<file name="$sourcedir/Display.php">
+		<operation>
+			<search position="replace"><![CDATA[
+		'can_remove' => allowedTo('delete_any') || (allowedTo('delete_replies') && $context['user']['started']) || (allowedTo('delete_own') && $message['id_member'] == $user_info['id'] && (empty($modSettings['edit_disable_time']) || $message['poster_time'] + $modSettings['edit_disable_time'] * 60 > time())),
+]]></search>
+			<add><![CDATA[
+		'can_remove' => allowedTo('delete_any') || (allowedTo('delete_replies') && $context['user']['started']) || (allowedTo('delete_own') && $message['id_member'] == $user_info['id'] && (empty($modSettings['edit_disable_time']) || $message['poster_time'] + $modSettings['edit_disable_time'] * 60 > time())),
+		'can_unapprove' => $message['approved'] && $context['can_approve'],
+]]></add>
+		</operation>
+	</file>
+	<file name="$sourcedir/Post.php">
+		<operation>
+			<search position="replace"><![CDATA[
+	// Generally don't show the approval box... (Assume we want things approved)
+	$context['show_approval'] = false;
+]]></search>
+			<add><![CDATA[
+	// Generally don't show the approval box... (Assume we want things approved)
+	$context['show_approval'] = allowedTo('approve_posts') && $context['becomes_approved'] ? 2 : (allowedTo('approve_posts') ? 1 : 0);
+]]></add>
+		</operation>
+		<operation>
+			<search position="replace"><![CDATA[
+	// If the poster is a guest evaluate the legality of name and email.
+	if ($posterIsGuest)
+]]></search>
+			<add><![CDATA[
+	// Incase we want to override
+	if (allowedTo('approve_posts'))
+	{
+		$becomesApproved = !isset($_REQUEST['approve']) || !empty($_REQUEST['approve']) ? 1 : 0;
+		$approve_has_changed = isset($row['approved']) ? $row['approved'] != $becomesApproved : false;
+	}
+
+	// If the poster is a guest evaluate the legality of name and email.
+	if ($posterIsGuest)
+]]></add>
+		</operation>
+	</file>
+
+	<file name="$themedir/Display.template.php">
+
+		<operation>
+
+			<search position="replace"><![CDATA[
+		// Maybe we can approve it, maybe we should?
+		if ($message['can_approve'])
+			echo '
+									<li class="approve_button"><a href="', $scripturl, '?action=moderate;area=postmod;sa=approve;topic=', $context['current_topic'], '.', $context['start'], ';msg=', $message['id'], ';', $context['session_var'], '=', $context['session_id'], '">', $txt['approve'], '</a></li>';
+]]></search>
+
+			<add><![CDATA[
+		// Maybe we can approve it, maybe we should?
+		if ($message['can_approve'] || $message['can_unapprove'])
+			echo '
+									<li class="', $message['can_unapprove'] ? 'un' : '', 'approve_button"><a href="', $scripturl, '?action=moderate;area=postmod;sa=approve;topic=', $context['current_topic'], '.', $context['start'], ';msg=', $message['id'], ';', $context['session_var'], '=', $context['session_id'], '">', $txt[$message['can_unapprove'] ? 'unapprove' : 'approve'], '</a></li>';
+]]></add>
+
+		</operation>
+
+	</file>
+
+	<file name="$themedir/css/index.css">
+
+		<operation>
+
+			<search position="replace"><![CDATA[
+ul.quickbuttons li.approve_button
+{
+	background: url(../images/theme/quickbuttons.png) no-repeat 0 -90px;
+}
+]]></search>
+
+			<add><![CDATA[
+ul.quickbuttons li.approve_button
+{
+	background: url(../images/theme/quickbuttons.png) no-repeat 0 -90px;
+}
+ul.quickbuttons li.unapprove_button
+{
+	background: url(../images/icons/quick_remove.gif) no-repeat;
+}
+]]></add>
+
+		</operation>
+
+	</file>
+
+	<file name="$languagedir/Modifications.english.php">
+		<operation>
+			<search position="end" />
+			<add><![CDATA[$txt['unapprove'] = 'Unapprove';
+]]></add>
+		</operation>
+	</file>
+	<file name="$languagedir/Modifications.english_utf8.php" error="skip">
+		<operation>
+			<search position="end" />
+			<add><![CDATA[$txt['unapprove'] = 'Unapprove';
+]]></add>
+		</operation>
+	</file>
+	<file name="$languagedir/Modifications.turkish.php" error="skip">
+		<operation>
+			<search position="end" />
+			<add><![CDATA[$txt['unapprove'] = 'Mesajı onaylama';
+]]></add>
+		</operation>
+	</file>
+	<file name="$languagedir/Modifications.turkish_utf8.php" error="skip">
+		<operation>
+			<search position="end" />
+			<add><![CDATA[$txt['unapprove'] = 'Mesaj&#305; onaylama';
+]]></add>
+		</operation>
+	</file>
+
+	<file name="$themedir/../core/Display.template.php" error="skip">
+
+		<operation>
+
+			<search position="replace"><![CDATA[
+	$restore_message_button = create_button('restore_topic.gif', 'restore_message', 'restore_message', 'align="middle"');
+]]></search>
+
+			<add><![CDATA[	// UNAPPROVE MOD
+	$restore_message_button = create_button('restore_topic.gif', 'restore_message', 'restore_message', 'align="middle"');
+	$unapprove_button = create_button('../icons/quick_remove.gif', 'unapprove', 'unapprove', 'align="middle"');
+]]></add>
+
+		</operation>
+
+		<operation>
+
+			<search position="replace"><![CDATA[
+		// Can they reply? Have they turned on quick reply?]]></search>
+
+			<add><![CDATA[
+		// Maybe we can approve it, maybe we should?
+		if ($message['can_unapprove'])
+			echo '
+							<li><a href="', $scripturl, '?action=moderate;area=postmod;sa=approve;topic=', $context['current_topic'], '.', $context['start'], ';msg=', $message['id'], ';sesc=', $context['session_id'], '">', $unapprove_button, '</a></li>';
+
+		// Can they reply? Have they turned on quick reply?]]></add>
+
+		</operation>
+
+	</file>
+</modification>
